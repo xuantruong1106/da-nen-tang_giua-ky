@@ -16,6 +16,8 @@ class Info extends StatefulWidget {
 
 class _MainAppState extends State<Info> {
   late List<Map<String, dynamic>> dataGetInfoStudent = [];
+  late List<Map<String, dynamic>> dataGetClassAndCourse = [];
+  late List<Map<String, dynamic>> dataGetProvince = [];
   late bool isLoggedIn;
 
   @override
@@ -91,13 +93,53 @@ class _MainAppState extends State<Info> {
     }
   }
 
-  void showAddStudentDialog() {
+  Future<void> getClassAndCourse() async {
+    try {
+      await widget.db.connect();
+      final result = await widget.db.executeQuery('SELECT * FROM get_classes_and_courses();');
+      setState(() {
+        dataGetClassAndCourse = result.map((row) => {
+          'class_name': row[0],
+          'course_name': row[1],
+        }).toList();
+      });
+      await widget.db.connection?.close();
+    } catch (e) {
+      // ignore: avoid_print
+      print('error getClassAndCourse: $e');
+    } finally {
+      // ignore: avoid_print
+      print('Connection closed for getClassAndCourse');
+    }
+  }
+
+  Future<void> getProvince() async {
+    try {
+      await widget.db.connect();
+      final result = await widget.db.executeQuery('SELECT province_name FROM province');
+      setState(() {
+        dataGetProvince = result.map((row) => {
+          'province_name': row[0],
+        }).toList();
+      });
+      await widget.db.connection?.close();
+    } catch (e) {
+      // ignore: avoid_print
+      print('error getProvince: $e');
+    } finally {
+      // ignore: avoid_print
+      print('Connection closed for getProvince');
+    }
+  }
+
+  void showAddStudentDialog() async {
+    await getClassAndCourse();
+    await getProvince();
     final fullNameController = TextEditingController();
     final dateOfBirthController = TextEditingController();
     final hometownController = TextEditingController();
     final classNameController = TextEditingController();
     final courseController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -128,17 +170,48 @@ class _MainAppState extends State<Info> {
                     }
                   },
                 ),
-                TextField(
-                  controller: hometownController,
+                // TextField(
+                //   controller: hometownController,
+                //   decoration: const InputDecoration(labelText: 'Hometown'),
+                // ),
+                DropdownButtonFormField<String>(
+                  value: hometownController.text.isEmpty ? null : hometownController.text,
                   decoration: const InputDecoration(labelText: 'Hometown'),
+                  items: dataGetProvince.map((item) {
+                    return DropdownMenuItem<String>(
+                      value: item['province_name'],
+                      child: Text(item['province_name']),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    hometownController.text = value!;
+                  },
                 ),
-                TextField(
-                  controller: classNameController,
+                DropdownButtonFormField<String>(
+                  value: classNameController.text.isEmpty ? null : classNameController.text,
                   decoration: const InputDecoration(labelText: 'Class Name'),
+                  items: dataGetClassAndCourse.map((item) {
+                    return DropdownMenuItem<String>(
+                      value: item['class_name'],
+                      child: Text(item['class_name']),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    classNameController.text = value!;
+                  },
                 ),
-                TextField(
-                  controller: courseController,
+                DropdownButtonFormField<String>(
+                  value: courseController.text.isEmpty ? null : courseController.text,
                   decoration: const InputDecoration(labelText: 'Course'),
+                  items: dataGetClassAndCourse.map((item) {
+                    return DropdownMenuItem<String>(
+                      value: item['course_name'],
+                      child: Text(item['course_name']),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    courseController.text = value!;
+                  },
                 ),
               ],
             ),
@@ -188,13 +261,15 @@ class _MainAppState extends State<Info> {
     } catch (e) {
       // ignore: avoid_print
       print('error editInfoStudent: $e');
-    }finally{
+    } finally {
       // ignore: avoid_print
       print('Connection closed for getInfoUser');
     }
   }
 
-  void showEditStudentDialog(Map<String, dynamic> student) {
+  void showEditStudentDialog(Map<String, dynamic> student) async {
+    await getClassAndCourse();
+    await getProvince();
     final fullNameController = TextEditingController(text: student['fullname']);
     final dateOfBirthController = TextEditingController(text: student['date_of_birth']);
     final hometownController = TextEditingController(text: student['home_town']);
@@ -231,17 +306,48 @@ class _MainAppState extends State<Info> {
                     }
                   },
                 ),
-                TextField(
-                  controller: hometownController,
+                // TextField(
+                //   controller: hometownController,
+                //   decoration: const InputDecoration(labelText: 'Hometown'),
+                // ),
+                DropdownButtonFormField<String>(
+                  value: hometownController.text.isEmpty ? null : hometownController.text,
                   decoration: const InputDecoration(labelText: 'Hometown'),
+                  items: dataGetProvince.map((item) {
+                    return DropdownMenuItem<String>(
+                      value: item['province_name'],
+                      child: Text(item['province_name']),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    hometownController.text = value!;
+                  },
                 ),
-                TextField(
-                  controller: classNameController,
+                DropdownButtonFormField<String>(
+                  value: classNameController.text.isEmpty ? null : classNameController.text,
                   decoration: const InputDecoration(labelText: 'Class Name'),
+                  items: dataGetClassAndCourse.map((item) {
+                    return DropdownMenuItem<String>(
+                      value: item['class_name'],
+                      child: Text(item['class_name']),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    classNameController.text = value!;
+                  },
                 ),
-                TextField(
-                  controller: courseController,
+                DropdownButtonFormField<String>(
+                  value: courseController.text.isEmpty ? null : courseController.text,
                   decoration: const InputDecoration(labelText: 'Course'),
+                  items: dataGetClassAndCourse.map((item) {
+                    return DropdownMenuItem<String>(
+                      value: item['course_name'],
+                      child: Text(item['course_name']),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    courseController.text = value!;
+                  },
                 ),
               ],
             ),
@@ -282,15 +388,15 @@ class _MainAppState extends State<Info> {
     } catch (e) {
       // ignore: avoid_print
       print(e);
-    }finally{
+    } finally {
       // ignore: avoid_print
       print('Connection closed for deleteStudentInfo');
     }
   }
 
-  void showDeleteDialog(int id){
+  void showDeleteDialog(int id) {
     showDialog(
-    context: context,
+      context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Confirm Deletion'),
@@ -315,7 +421,7 @@ class _MainAppState extends State<Info> {
     );
   }
 
-  Future refreshData() async{
+  Future refreshData() async {
     await fetchData();
   }
 
@@ -350,45 +456,52 @@ class _MainAppState extends State<Info> {
                     ),
                   ),
                   Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text('ID')),
-                          DataColumn(label: Text('Fullname')),
-                          DataColumn(label: Text('Date of Birth')),
-                          DataColumn(label: Text('Home Town')),
-                          DataColumn(label: Text('Class Name')),
-                          DataColumn(label: Text('Course')),
-                          DataColumn(label: Text('Action')),
-                        ],
-                        rows: dataGetInfoStudent.map((student) {
-                          return DataRow(cells: [
-                            DataCell(Text(student['id'].toString())),
-                            DataCell(Text(student['fullname'])),
-                            DataCell(Text(student['date_of_birth'])),
-                            DataCell(Text(student['home_town'])),
-                            DataCell(Text(student['class_name'])),
-                            DataCell(Text(student['course'])),
-                            DataCell(ButtonBar(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  onPressed: () {
-                                    showEditStudentDialog(student);
-                                  },
-                                  color: Colors.blue,
+                    child: ListView.builder(
+                      itemCount: dataGetInfoStudent.length,
+                      itemBuilder: (context, index) {
+                        final student = dataGetInfoStudent[index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              ListTile(
+                                leading: const Icon(Icons.person),
+                                title: Text('Student name: ${student['fullname']}'),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('ID: ${student['id']}'),
+                                    Text('Date of Birth: ${student['date_of_birth']}'),
+                                    Text('Home Town: ${student['home_town']}'),
+                                    Text('Class Name: ${student['class_name']}'),
+                                    Text('Course: ${student['course']}'),
+                                  ],
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete),
-                                  onPressed: () => showDeleteDialog(student['id']),
-                                  color: Colors.red,
-                                ),
-                              ],
-                            )),
-                          ]);
-                        }).toList(),
-                      ),
+                              ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: <Widget>[
+                                  TextButton(
+                                    child: const Text('EDIT'),
+                                    onPressed: () {
+                                      showEditStudentDialog(student);
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  TextButton(
+                                    child: const Text('DELETE'),
+                                    onPressed: () {
+                                      showDeleteDialog(student['id']);
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                              )
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],

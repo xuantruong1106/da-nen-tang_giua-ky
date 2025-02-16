@@ -5,7 +5,7 @@ class DatabaseConnection {
 
   // khi chạy trên windows app: dùng host: localhost
   // khi chạy trên giả lập: dùng host: 10.0.2.2
-  final String localhost = 'localhost';
+  final String localhost = '10.0.2.2';
   final int port = 5433;
   final String databaseName = 'giuaky';
   final String username = 'postgres';

@@ -34,6 +34,7 @@ class CheckLoginScreen extends StatelessWidget {
     // Check login state here
     bool isLoggedIn = false; // Replace with your login state check
 
+    // ignore: dead_code
     if (isLoggedIn) {
       Future.microtask(() => Navigator.pushReplacementNamed(context, '/main'));
     } else {
