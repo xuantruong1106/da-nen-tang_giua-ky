@@ -16,7 +16,8 @@ class Info extends StatefulWidget {
 
 class _MainAppState extends State<Info> {
   late List<Map<String, dynamic>> dataGetInfoStudent = [];
-  late List<Map<String, dynamic>> dataGetClassAndCourse = [];
+  late List<Map<String, dynamic>> dataGetCourses = [];
+  late List<Map<String, dynamic>> dataGetClasses = [];
   late List<Map<String, dynamic>> dataGetProvince = [];
   late bool isLoggedIn;
 
@@ -42,14 +43,21 @@ class _MainAppState extends State<Info> {
       await widget.db.connect();
       final result = await widget.db.executeQuery('SELECT * FROM info_student');
       setState(() {
-        dataGetInfoStudent = result.map((row) => {
-          'id': row[0],
-          'fullname': row[1],
-          'date_of_birth': row[2].toString().substring(0, 10).split('-').reversed.join('-'),
-          'home_town': row[3],
-          'class_name': row[4],
-          'course': row[5],
-        }).toList();
+        dataGetInfoStudent = result
+            .map((row) => {
+                  'id': row[0],
+                  'fullname': row[1],
+                  'date_of_birth': row[2]
+                      .toString()
+                      .substring(0, 10)
+                      .split('-')
+                      .reversed
+                      .join('-'),
+                  'home_town': row[3],
+                  'class_name': row[4],
+                  'course': row[5],
+                })
+            .toList();
         dataGetInfoStudent.sort((a, b) => a['id'].compareTo(b['id']));
       });
     } catch (e) {
@@ -62,7 +70,8 @@ class _MainAppState extends State<Info> {
     }
   }
 
-  Future<void> addStudentInfo(String fullName, String dateOfBirth, String hometown, String className, String course) async {
+  Future<void> addStudentInfo(String fullName, String dateOfBirth,
+      String hometown, String className, String course) async {
     try {
       await widget.db.connect();
       await widget.db.executeQuery(
@@ -93,34 +102,62 @@ class _MainAppState extends State<Info> {
     }
   }
 
-  Future<void> getClassAndCourse() async {
+  Future<void> getCourses() async {
     try {
       await widget.db.connect();
-      final result = await widget.db.executeQuery('SELECT * FROM get_classes_and_courses();');
+      final result =
+          await widget.db.executeQuery('SELECT course_name FROM course');
       setState(() {
-        dataGetClassAndCourse = result.map((row) => {
-          'class_name': row[0],
-          'course_name': row[1],
-        }).toList();
+        dataGetCourses = result
+            .map((row) => {
+                  'course_name': row[0],
+                })
+            .toList();
       });
       await widget.db.connection?.close();
     } catch (e) {
       // ignore: avoid_print
-      print('error getClassAndCourse: $e');
+      print('error getCourses: $e');
     } finally {
       // ignore: avoid_print
-      print('Connection closed for getClassAndCourse');
+      print('Connection closed for getCourses');
+    }
+  }
+
+  Future<void> getClasses(String courseName) async {
+    try {
+      await widget.db.connect();
+      final result = await widget.db.executeQuery(
+          'SELECT c.class_name FROM class c JOIN course co ON c.course_id = co.id WHERE co.course_name = @courseName',
+          substitutionValues: {'courseName': courseName});
+      setState(() {
+        dataGetClasses = result
+            .map((row) => {
+                  'class_name': row[0],
+                })
+            .toList();
+      });
+      await widget.db.connection?.close();
+    } catch (e) {
+      // ignore: avoid_print
+      print('error getClasses: $e');
+    } finally {
+      // ignore: avoid_print
+      print('Connection closed for getClasses');
     }
   }
 
   Future<void> getProvince() async {
     try {
       await widget.db.connect();
-      final result = await widget.db.executeQuery('SELECT province_name FROM province');
+      final result =
+          await widget.db.executeQuery('SELECT province_name FROM province');
       setState(() {
-        dataGetProvince = result.map((row) => {
-          'province_name': row[0],
-        }).toList();
+        dataGetProvince = result
+            .map((row) => {
+                  'province_name': row[0],
+                })
+            .toList();
       });
       await widget.db.connection?.close();
     } catch (e) {
@@ -129,120 +166,136 @@ class _MainAppState extends State<Info> {
     } finally {
       // ignore: avoid_print
       print('Connection closed for getProvince');
+      await widget.db.connection?.close();
     }
   }
 
   void showAddStudentDialog() async {
-    await getClassAndCourse();
     await getProvince();
+    await getCourses();
     final fullNameController = TextEditingController();
     final dateOfBirthController = TextEditingController();
     final hometownController = TextEditingController();
     final classNameController = TextEditingController();
     final courseController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Add Student Information'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(
-                  controller: fullNameController,
-                  decoration: const InputDecoration(labelText: 'Full Name'),
-                ),
-                TextField(
-                  controller: dateOfBirthController,
-                  decoration: const InputDecoration(labelText: 'Date of Birth'),
-                  readOnly: true,
-                  onTap: () async {
-                    DateTime? pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(1900),
-                      lastDate: DateTime(2100),
-                    );
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Add Student Information'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: fullNameController,
+                      decoration: const InputDecoration(labelText: 'Full Name'),
+                    ),
+                    TextField(
+                      controller: dateOfBirthController,
+                      decoration:
+                          const InputDecoration(labelText: 'Date of Birth'),
+                      readOnly: true,
+                      onTap: () async {
+                        DateTime? pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(1900),
+                          lastDate: DateTime(2100),
+                        );
 
-                    if (pickedDate != null) {
-                      String formattedDate = "${pickedDate.year}-${pickedDate.month}-${pickedDate.day}";
-                      dateOfBirthController.text = formattedDate;
-                    }
+                        if (pickedDate != null) {
+                          String formattedDate =
+                              "${pickedDate.year}-${pickedDate.month}-${pickedDate.day}";
+                          dateOfBirthController.text = formattedDate;
+                        }
+                      },
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: hometownController.text.isEmpty
+                          ? null
+                          : hometownController.text,
+                      decoration: const InputDecoration(labelText: 'Hometown'),
+                      items: dataGetProvince.map((item) {
+                        return DropdownMenuItem<String>(
+                          value: item['province_name'],
+                          child: Text(item['province_name']),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        hometownController.text = value!;
+                      },
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: courseController.text.isEmpty
+                          ? null
+                          : courseController.text,
+                      decoration: const InputDecoration(labelText: 'Course'),
+                      items: dataGetCourses.map((item) {
+                        return DropdownMenuItem<String>(
+                          value: item['course_name'],
+                          child: Text(item['course_name']),
+                        );
+                      }).toList(),
+                      onChanged: (value) async {
+                        setState(() {
+                          courseController.text = value!;
+                          classNameController.text = '';
+                        });
+                        await getClasses(courseController.text);
+                      },
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: classNameController.text.isEmpty
+                          ? null
+                          : classNameController.text,
+                      decoration:
+                          const InputDecoration(labelText: 'Class Name'),
+                      items: dataGetClasses.map((item) {
+                        return DropdownMenuItem<String>(
+                          value: item['class_name'],
+                          child: Text(item['class_name']),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        classNameController.text = value!;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
                   },
                 ),
-                // TextField(
-                //   controller: hometownController,
-                //   decoration: const InputDecoration(labelText: 'Hometown'),
-                // ),
-                DropdownButtonFormField<String>(
-                  value: hometownController.text.isEmpty ? null : hometownController.text,
-                  decoration: const InputDecoration(labelText: 'Hometown'),
-                  items: dataGetProvince.map((item) {
-                    return DropdownMenuItem<String>(
-                      value: item['province_name'],
-                      child: Text(item['province_name']),
+                TextButton(
+                  child: const Text('Add'),
+                  onPressed: () {
+                    addStudentInfo(
+                      fullNameController.text,
+                      dateOfBirthController.text,
+                      hometownController.text,
+                      classNameController.text,
+                      courseController.text,
                     );
-                  }).toList(),
-                  onChanged: (value) {
-                    hometownController.text = value!;
-                  },
-                ),
-                DropdownButtonFormField<String>(
-                  value: classNameController.text.isEmpty ? null : classNameController.text,
-                  decoration: const InputDecoration(labelText: 'Class Name'),
-                  items: dataGetClassAndCourse.map((item) {
-                    return DropdownMenuItem<String>(
-                      value: item['class_name'],
-                      child: Text(item['class_name']),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    classNameController.text = value!;
-                  },
-                ),
-                DropdownButtonFormField<String>(
-                  value: courseController.text.isEmpty ? null : courseController.text,
-                  decoration: const InputDecoration(labelText: 'Course'),
-                  items: dataGetClassAndCourse.map((item) {
-                    return DropdownMenuItem<String>(
-                      value: item['course_name'],
-                      child: Text(item['course_name']),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    courseController.text = value!;
+                    Navigator.of(context).pop();
                   },
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('Add'),
-              onPressed: () {
-                addStudentInfo(
-                  fullNameController.text,
-                  dateOfBirthController.text,
-                  hometownController.text,
-                  classNameController.text,
-                  courseController.text,
-                );
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
+            );
+          },
         );
       },
     );
   }
 
-  Future<void> editInfoStudent(int id, String fullName, String dateOfBirth, String hometown, String className, String course) async {
+  Future<void> editInfoStudent(int id, String fullName, String dateOfBirth,
+      String hometown, String className, String course) async {
     try {
       await widget.db.connect();
       await widget.db.executeQuery(
@@ -268,112 +321,130 @@ class _MainAppState extends State<Info> {
   }
 
   void showEditStudentDialog(Map<String, dynamic> student) async {
-    await getClassAndCourse();
+    await getCourses();
     await getProvince();
     final fullNameController = TextEditingController(text: student['fullname']);
-    final dateOfBirthController = TextEditingController(text: student['date_of_birth']);
-    final hometownController = TextEditingController(text: student['home_town']);
-    final classNameController = TextEditingController(text: student['class_name']);
+    final dateOfBirthController =
+        TextEditingController(text: student['date_of_birth']);
+    final hometownController =
+        TextEditingController(text: student['home_town']);
+    final classNameController =
+        TextEditingController(text: student['class_name']);
     final courseController = TextEditingController(text: student['course']);
+
+    await getClasses(courseController.toString());
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Edit Student Information'),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(
-                  controller: fullNameController,
-                  decoration: const InputDecoration(labelText: 'Full Name'),
-                ),
-                TextField(
-                  controller: dateOfBirthController,
-                  decoration: const InputDecoration(labelText: 'Date of Birth'),
-                  readOnly: true,
-                  onTap: () async {
-                    DateTime? pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.parse(student['date_of_birth']),
-                      firstDate: DateTime(1900),
-                      lastDate: DateTime(2100),
-                    );
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Edit Student Information'),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: fullNameController,
+                      decoration: const InputDecoration(labelText: 'Full Name'),
+                    ),
+                    TextField(
+                      controller: dateOfBirthController,
+                      decoration:
+                          const InputDecoration(labelText: 'Date of Birth'),
+                      readOnly: true,
+                      onTap: () async {
+                        DateTime? pickedDate = await showDatePicker(
+                          context: context,
+                          initialDate: DateTime.parse(student['date_of_birth']),
+                          firstDate: DateTime(1900),
+                          lastDate: DateTime(2100),
+                        );
 
-                    if (pickedDate != null) {
-                      String formattedDate = "${pickedDate.year}-${pickedDate.month}-${pickedDate.day}";
-                      dateOfBirthController.text = formattedDate;
-                    }
+                        if (pickedDate != null) {
+                          String formattedDate =
+                              "${pickedDate.year}-${pickedDate.month}-${pickedDate.day}";
+                          dateOfBirthController.text = formattedDate;
+                        }
+                      },
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: hometownController.text.isEmpty
+                          ? null
+                          : hometownController.text,
+                      decoration: const InputDecoration(labelText: 'Hometown'),
+                      items: dataGetProvince.map((item) {
+                        return DropdownMenuItem<String>(
+                          value: item['province_name'],
+                          child: Text(item['province_name']),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        hometownController.text = value!;
+                      },
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: courseController.text.isEmpty
+                          ? null
+                          : courseController.text,
+                      decoration: const InputDecoration(labelText: 'Course'),
+                      items: dataGetCourses.map((item) {
+                        return DropdownMenuItem<String>(
+                          value: item['course_name'],
+                          child: Text(item['course_name']),
+                        );
+                      }).toList(),
+                      onChanged: (value) async {
+                        setState(() {
+                          courseController.text = value!;
+                          classNameController.text = '';
+                        });
+                        await getClasses(courseController.text);
+                      },
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: classNameController.text.isEmpty
+                          ? null
+                          : classNameController.text,
+                      decoration:
+                          const InputDecoration(labelText: 'Class Name'),
+                      items: dataGetClasses.map((item) {
+                        return DropdownMenuItem<String>(
+                          value: item['class_name'],
+                          child: Text(item['class_name']),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        classNameController.text = value!;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
                   },
                 ),
-                // TextField(
-                //   controller: hometownController,
-                //   decoration: const InputDecoration(labelText: 'Hometown'),
-                // ),
-                DropdownButtonFormField<String>(
-                  value: hometownController.text.isEmpty ? null : hometownController.text,
-                  decoration: const InputDecoration(labelText: 'Hometown'),
-                  items: dataGetProvince.map((item) {
-                    return DropdownMenuItem<String>(
-                      value: item['province_name'],
-                      child: Text(item['province_name']),
+                TextButton(
+                  child: const Text('Update'),
+                  onPressed: () {
+                    editInfoStudent(
+                      student['id'],
+                      fullNameController.text,
+                      dateOfBirthController.text,
+                      hometownController.text,
+                      classNameController.text,
+                      courseController.text,
                     );
-                  }).toList(),
-                  onChanged: (value) {
-                    hometownController.text = value!;
-                  },
-                ),
-                DropdownButtonFormField<String>(
-                  value: classNameController.text.isEmpty ? null : classNameController.text,
-                  decoration: const InputDecoration(labelText: 'Class Name'),
-                  items: dataGetClassAndCourse.map((item) {
-                    return DropdownMenuItem<String>(
-                      value: item['class_name'],
-                      child: Text(item['class_name']),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    classNameController.text = value!;
-                  },
-                ),
-                DropdownButtonFormField<String>(
-                  value: courseController.text.isEmpty ? null : courseController.text,
-                  decoration: const InputDecoration(labelText: 'Course'),
-                  items: dataGetClassAndCourse.map((item) {
-                    return DropdownMenuItem<String>(
-                      value: item['course_name'],
-                      child: Text(item['course_name']),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    courseController.text = value!;
+                    Navigator.of(context).pop();
                   },
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: const Text('Update'),
-              onPressed: () {
-                editInfoStudent(
-                  student['id'],
-                  fullNameController.text,
-                  dateOfBirthController.text,
-                  hometownController.text,
-                  classNameController.text,
-                  courseController.text,
-                );
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -382,7 +453,8 @@ class _MainAppState extends State<Info> {
   Future<void> deleteStudentInfo(int id) async {
     try {
       await widget.db.connect();
-      await widget.db.executeQuery('DELETE FROM info_student WHERE id = @id;', substitutionValues: {'id': id});
+      await widget.db.executeQuery('DELETE FROM info_student WHERE id = @id;',
+          substitutionValues: {'id': id});
       await widget.db.connection?.close();
       fetchData();
     } catch (e) {
@@ -467,14 +539,17 @@ class _MainAppState extends State<Info> {
                             children: <Widget>[
                               ListTile(
                                 leading: const Icon(Icons.person),
-                                title: Text('Student name: ${student['fullname']}'),
+                                title: Text(
+                                    'Student name: ${student['fullname']}'),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text('ID: ${student['id']}'),
-                                    Text('Date of Birth: ${student['date_of_birth']}'),
+                                    Text(
+                                        'Date of Birth: ${student['date_of_birth']}'),
                                     Text('Home Town: ${student['home_town']}'),
-                                    Text('Class Name: ${student['class_name']}'),
+                                    Text(
+                                        'Class Name: ${student['class_name']}'),
                                     Text('Course: ${student['course']}'),
                                   ],
                                 ),
